@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giám Sát Vi Phạm</title>
+    <!-- Thư viện Chart.js vẽ biểu đồ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f8;
+            color: #333;
+            padding-bottom: 30px;
+        }
+
+        header {
+            background-color: #1a73e8;
+            color: white;
+            padding: 12px 16px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .btn-refresh {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-refresh:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Thanh thông báo mất kết nối mạng */
+        .offline-bar {
+            display: none;
+            background-color: #d32f2f;
+            color: white;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Khung hiển thị biểu đồ thống kê */
+        .chart-container {
+            max-width: 1000px;
+            margin: 16px auto;
+            padding: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .gallery-container {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .card img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            background-color: #eee;
+        }
+
+        .card-info {
+            padding: 8px 10px;
+            background: #fff;
+        }
+
+        .card-time {
+            font-size: 0.85rem;
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        .card-status {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 16px;
+        }
+
+        .modal img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+
+        .modal-time {
+            color: white;
+            margin-top: 12px;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            grid-column: 1 / -1;
+        }
+
+        @media (min-width: 600px) {
+            header h1 {
+                font-size: 1.3rem;
+            }
+            .gallery-container {
+                padding: 20px;
+                gap: 16px;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }
+            .card-time {
+                font-size: 0.9rem;
+            }
+            .chart-container {
+                margin: 20px auto;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>GIÁM SÁT VI PHẠM</h1>
+        <button class="btn-refresh" onclick="fetchViolations()">Tải lại 🔄</button>
+    </header>
+
+    <!-- Thanh cảnh báo mất kết nối -->
+    <div class="offline-bar" id="offlineBar">⚠️ Không thể kết nối internet</div>
+
+    <!-- Khung chứa sơ đồ cột thống kê -->
+    <div class="chart-container">
+        <canvas id="violationChart"></canvas>
+    </div>
+
+    <div class="gallery-container" id="gallery">
+        <div class="loading">Đang tải danh sách vi phạm...</div>
+    </div>
+
+    <div class="modal" id="modal" onclick="closeModal()">
+        <span class="modal-close">&times;</span>
+        <img id="modal-img" src="" alt="Ảnh phóng to">
+        <div class="modal-time" id="modal-time"></div>
+    </div>
+
+    <script src="https://product-gallery.cloudinary.com/all.js" type="text/javascript"></script>
+
+    <script>
+        const cloudName = "ihgffthg";
+        let violationChart = null;
+
+        // Xử lý sự kiện On/Offline của thiết bị
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBar').style.display = 'block';
+        });
+
+        window.addEventListener('online', () => {
+            document.getElementById('offlineBar').style.display = 'none';
+            fetchViolations();
+        });
+
+        // Hàm xử lý dữ liệu và vẽ biểu đồ cột (Lọc riêng tuần hiện tại)
+        function updateChart(resources) {
+            const dayCounts = [0, 0, 0, 0, 0, 0, 0]; // Index: 0 (CN), 1 (T2), ..., 6 (T7)
+
+            const now = new Date();
+            const currentDayOfWeek = now.getDay();
+            const distanceToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+            
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - distanceToMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            resources.forEach(item => {
+                const itemDate = new Date(item.created_at);
+                if (itemDate >= startOfWeek) {
+                    const day = itemDate.getDay();
+                    dayCounts[day]++;
+                }
+            });
+
+            const chartData = [...dayCounts.slice(1), dayCounts[0]];
+            const labels = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+
+            const ctx = document.getElementById('violationChart').getContext('2d');
+            
+            if (violationChart) {
+                violationChart.destroy();
+            }
+
+            violationChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Số lượt vi phạm',
+                        data: chartData,
+                        backgroundColor: '#1a73e8',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'THỐNG KÊ VI PHẠM TRONG TUẦN HIỆN TẠI',
+                            font: { size: 15, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchViolations() {
+            const gallery = document.getElementById('gallery');
+            const offlineBar = document.getElementById('offlineBar');
+
+            // Kiểm tra trạng thái mạng trước khi gửi yêu cầu
+            if (!navigator.onLine) {
+                offlineBar.style.display = 'block';
+                gallery.innerHTML = '<div class="loading" style="color: #d32f2f; font-weight: bold;">⚠️ Không thể kết nối internet. Vui lòng kiểm tra lại mạng!</div>';
+                return;
+            } else {
+                offlineBar.style.display = 'none';
+            }
+
+            gallery.innerHTML = '<div class="loading">Đang cập nhật...</div>';
+
+            const listUrl = `https://res.cloudinary.com/${cloudName}/image/list/no_helmet.json`;
+
+            try {
+                const response = await fetch(listUrl);
+
+                if (!response.ok) {
+                    throw new Error('Chưa bật tính năng Resource List trên Cloudinary');
+                }
+
+                const data = await response.json();
+                const resources = data.resources || [];
+
+                if (resources.length === 0) {
+                    gallery.innerHTML = '<div class="loading">Chưa có hình ảnh vi phạm nào.</div>';
+                    updateChart([]);
+                    return;
+                }
+
+                updateChart(resources);
+
+                gallery.innerHTML = '';
+                resources.reverse();
+
+                resources.forEach(item => {
+                    const imgUrl = `https://res.cloudinary.com/${cloudName}/image/upload/v${item.version}/${item.public_id}.${item.format}`;
+                    
+                    const dateObj = new Date(item.created_at);
+                    const formattedDate = dateObj.toLocaleDateString('vi-VN');
+                    const formattedTime = dateObj.toLocaleTimeString('vi-VN');
+                    const fullTimeString = `${formattedTime} - ${formattedDate}`;
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.onclick = () => openModal(imgUrl, fullTimeString);
+
+                    card.innerHTML = `
+                        <img src="${imgUrl}" alt="Vi phạm" loading="lazy">
+                        <div class="card-info">
+                            <div class="card-time">⏰ ${formattedTime}</div>
+                            <div class="card-status">📅 ${formattedDate}</div>
+                        </div>
+                    `;
+                    gallery.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error(error);
+                if (!navigator.onLine) {
+                    gallery.innerHTML = '<div class="loading" style="color: #d32f2f; font-weight: bold;">⚠️ Không thể kết nối internet.</div>';
+                } else {
+                    gallery.innerHTML = `
+                        <div class="loading" style="color: #d32f2f; text-align: left;">
+                            <b>Cần bật 1 cài đặt trên Cloudinary:</b><br><br>
+                            1. Vào Dashboard Cloudinary web.<br>
+                            2. Bấm biểu tượng <b>Settings ⚙️</b> (góc dưới bên trái).<br>
+                            3. Chọn mục <b>Security</b>.<br>
+                            4. Cuộn xuống tìm <b>Restricted media types</b>.<br>
+                            5. Bỏ tích ô <b>Resource list</b> và bấm <b>Save</b>.
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function openModal(url, timeText) {
+            document.getElementById('modal-img').src = url;
+            document.getElementById('modal-time').innerText = "Thời gian: " + timeText;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // Kiểm tra kết nối ban đầu
+        if (!navigator.onLine) {
+            document.getElementById('offlineBar').style.display = 'block';
+            document.getElementById('gallery').innerHTML = '<div class="loading" style="color: #d32f2f; font-weight: bold;">⚠️ Không thể kết nối internet. Vui lòng kiểm tra lại mạng!</div>';
+        } else {
+            fetchViolations();
+        }
+    </script>
+</body>
+</html>
