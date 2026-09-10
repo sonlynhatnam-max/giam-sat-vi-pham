@@ -267,33 +267,42 @@
             }
 
             violationChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Số lượt vi phạm',
-                        data: chartData,
-                        backgroundColor: '#1a73e8',
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'THỐNG KÊ VI PHẠM TRONG TUẦN HIỆN TẠI',
-                            font: { size: 15, weight: 'bold' }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { stepSize: 1 }
-                        }
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Số lượt vi phạm',
+            data: chartData,
+            backgroundColor: '#1a73e8',
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'THỐNG KÊ VI PHẠM TRONG TUẦN HIỆN TẠI',
+                font: { size: 15, weight: 'bold' }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    maxRotation: 0,
+                    minRotation: 0,
+                    font: {
+                        size: 11
                     }
                 }
-            });
+            },
+            y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 }
+            }
+        }
+    }
+});
         }
 
         async function fetchViolations() {
