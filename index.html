@@ -267,33 +267,42 @@
             }
 
             violationChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Số lượt vi phạm',
-                        data: chartData,
-                        backgroundColor: '#1a73e8',
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'THỐNG KÊ VI PHẠM TRONG TUẦN HIỆN TẠI',
-                            font: { size: 15, weight: 'bold' }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { stepSize: 1 }
-                        }
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Số lượt vi phạm',
+            data: chartData,
+            backgroundColor: '#1a73e8',
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'THỐNG KÊ VI PHẠM TRONG TUẦN HIỆN TẠI',
+                font: { size: 15, weight: 'bold' }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    maxRotation: 0, // Khóa không cho chữ xoay nghiêng
+                    minRotation: 0, // Luôn giữ chữ nằm ngang
+                    font: {
+                        size: 11 // Giảm cỡ chữ xuống một chút để không bị đè lên nhau trên màn hình hẹp
                     }
                 }
-            });
+            },
+            y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 }
+            }
+        }
+    }
+});
         }
 
         async function fetchViolations() {
